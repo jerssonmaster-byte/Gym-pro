@@ -12,7 +12,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import date, timedelta
 import os
-
+import plotly.express as px
+import random
 # ─────────────────────────────────────────────
 #  CONFIGURACIÓN DE PÁGINA
 # ─────────────────────────────────────────────
@@ -328,6 +329,9 @@ with st.sidebar:
         "📅 Historial Semanal",
         "🥗 Nutrición 360",
         "📊 Métricas y Progreso",
+        "🏃‍♂️ Analítica 5K",
+        "👨‍🍳 Chef AI",
+        "🛠️ Constructor de Rutinas"
     ], label_visibility="collapsed")
 
     st.markdown("---")
@@ -858,3 +862,260 @@ elif seccion == "📊 Métricas y Progreso":
                 st.toast(f"Semana {sem_sel} reiniciada.", icon="🔄")
                 st.rerun()
 
+# ─────────────────────────────────────────────
+#  ══ ANALÍTICA 5K ══
+# ─────────────────────────────────────────────
+elif seccion == "🏃‍♂️ Analítica 5K":
+    st.markdown("# 🏃‍♂️ Analítica Avanzada de Carrera")
+    st.markdown("<div style='color:#4d6b4d;font-family:Space Mono;font-size:12px;margin-bottom:20px'>CRUCE DE DATOS AERÓBICOS · GESTIÓN DE CARGAS</div>", unsafe_allow_html=True)
+
+    # 1. FORMULARIO DE INGRESO DE DATOS
+    with st.expander("➕ Registrar Nueva Carrera", expanded=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            fecha_carrera = st.date_input("Fecha de la sesión", date.today())
+            distancia_km = st.number_input("Distancia (km)", min_value=0.0, step=0.1, value=5.0)
+            tiempo_min = st.number_input("Tiempo Total (minutos)", min_value=0.0, step=1.0, value=25.0)
+        with col2:
+            inclinacion = st.number_input("Inclinación Promedio (%)", min_value=0.0, step=0.5, value=1.0)
+            rpe = st.slider("Esfuerzo Percibido (RPE 1-10)", min_value=1, max_value=10, value=7,
+                            help="1 = Paseo suave, 10 = Máximo esfuerzo (Fallo)")
+        
+        if st.button("💾 Guardar Registro Analítico"):
+            if distancia_km > 0 and tiempo_min > 0:
+                # --- MOTOR LÓGICO DE CÁLCULOS ---
+                ritmo_decimal = tiempo_min / distancia_km
+                minutos = int(ritmo_decimal)
+                segundos = int((ritmo_decimal - minutos) * 60)
+                ritmo_str = f"{minutos}:{segundos:02d}"
+                
+                velocidad_kmh = round((distancia_km / tiempo_min) * 60, 2)
+                
+                # Carga Externa (1% pendiente suma 10% de carga)
+                factor_inclinacion = 1 + (inclinacion / 10)
+                carga_entrenamiento = round(tiempo_min * rpe * factor_inclinacion, 1)
+
+                nuevo_registro = pd.DataFrame([{
+                    "Fecha": fecha_carrera,
+                    "Distancia (km)": distancia_km,
+                    "Tiempo (min)": tiempo_min,
+                    "Ritmo (min/km)": ritmo_str,
+                    "Ritmo Decimal": ritmo_decimal,
+                    "Velocidad (km/h)": velocidad_kmh,
+                    "Inclinación (%)": inclinacion,
+                    "RPE": rpe,
+                    "Carga Externa": carga_entrenamiento
+                }])
+                
+                if 'df_carreras' not in st.session_state:
+                    st.session_state.df_carreras = pd.DataFrame()
+                
+                st.session_state.df_carreras = pd.concat([st.session_state.df_carreras, nuevo_registro], ignore_index=True)
+                st.success(f"¡Cálculo Exitoso! Ritmo: {ritmo_str} min/km | Velocidad: {velocidad_kmh} km/h | Carga: {carga_entrenamiento}")
+
+    # 2. VISUALIZACIÓN Y DASHBOARD
+    if 'df_carreras' in st.session_state and not st.session_state.df_carreras.empty:
+        df = st.session_state.df_carreras.sort_values(by="Fecha")
+        
+        st.markdown("---")
+        st.subheader("📊 Gráfica Multivariable")
+        st.markdown("<div style='font-size:13px;color:#8aad8a;margin-bottom:15px'><b>Guía:</b> Eje Y (Velocidad) | Tamaño de burbuja (Carga) | Color (Esfuerzo RPE)</div>", unsafe_allow_html=True)
+        
+        fig = px.scatter(
+            df, 
+            x="Fecha", 
+            y="Velocidad (km/h)", 
+            size="Carga Externa", 
+            color="RPE",
+            hover_data=["Distancia (km)", "Ritmo (min/km)", "Inclinación (%)"],
+            color_continuous_scale="RdYlGn_r",
+        )
+        
+        fig.update_layout(
+            template="plotly_dark", 
+            plot_bgcolor="rgba(0,0,0,0)", 
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=10, t=20, b=10)
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("<div class='stat-label'>Datos en crudo</div>", unsafe_allow_html=True)
+        st.dataframe(df.drop(columns=["Ritmo Decimal"]), use_container_width=True)
+# ─────────────────────────────────────────────
+#  ══ CHEF AI (GENERADOR DE RECETAS) ══
+# ─────────────────────────────────────────────
+elif seccion == "👨‍🍳 Chef AI":
+    import random
+    st.markdown("# 👨‍🍳 Tu Chef Deportivo")
+    st.markdown("<div style='color:#4d6b4d;font-family:Space Mono;font-size:12px;margin-bottom:20px'>INTELIGENCIA NUTRICIONAL · OPTIMIZACIÓN DE MACROS</div>", unsafe_allow_html=True)
+
+    st.subheader("¿Qué tienes en la despensa/nevera?")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        fuente_proteina = st.multiselect(
+            "🥩 Fuentes de Proteína",
+            ["Pechuga de Pollo", "Huevos", "Atún", "Carne de res magra", "Pescado blanco", "Proteína en polvo (Whey)"]
+        )
+    with col2:
+        fuente_carbo = st.multiselect(
+            "🍚 Carbohidratos (Energía)",
+            ["Arroz integral", "Avena", "Papa cocida", "Pasta", "Pan integral", "Tortillas de maíz"]
+        )
+    
+    vegetales_extras = st.text_input("🥦 Vegetales y otros extras (Escribe separados por coma. Ej: espinaca, cebolla, tomate, aguacate):")
+    
+    if st.button("🍳 Generar Menú de Recomposición"):
+        if not fuente_proteina:
+            st.warning("⚠️ Necesitas seleccionar al menos una fuente de proteína para construir músculo.")
+        else:
+            with st.spinner("Diseñando tu comida..."):
+                # --- MOTOR LÓGICO CON VARIABILIDAD ---
+                protes_str = ", ".join(fuente_proteina).lower()
+                veggies = vegetales_extras if vegetales_extras else 'un mix de vegetales frescos'
+                carbos = fuente_carbo[0].lower() if fuente_carbo else 'una buena ensalada'
+                
+                # Opciones para Huevos
+                if "huevos" in protes_str:
+                    opciones = [
+                        f"**Omelette de Poder:** Bate los huevos (3 claras x 1 yema). Hazlo en sartén de teflón y rellena con {veggies}. Acompaña con {carbos}.",
+                        f"**Revuelto Anabólico:** Saltea primero {veggies}. Cuando doren, echa los huevos encima y revuelve. Sírvelo sobre {carbos}.",
+                        f"**Tortilla Fit (Estilo Español):** Mezcla los huevos con {veggies} y un poco de {carbos} directamente en el bowl, luego a la sartén tapada a fuego lento."
+                    ]
+                    receta = f"### 🍳 {random.choice(opciones)}\n"
+                
+                # Opciones para Pollo / Carne
+                elif "pechuga de pollo" in protes_str or "carne de res magra" in protes_str:
+                    opciones = [
+                        f"**Bowl de Campeones:** Corta el {fuente_proteina[0].lower()} en dados. Ásalo a la plancha. Arma un bowl con base de {carbos}, la carne y corona con {veggies}.",
+                        f"**Fajitas Desarmadas:** Corta la carne en tiras finas. Saltea a fuego muy alto junto con {veggies} y especias (pimentón, comino). Acompaña con {carbos}.",
+                        f"**Guiso Express Limpio:** Dora el {fuente_proteina[0].lower()}, agrega {veggies} picados chiquitos, un chorrito de agua y tapa para que se cocine al vapor. Sírvelo junto a {carbos}."
+                    ]
+                    receta = f"### 🍛 {random.choice(opciones)}\n"
+                
+                else:
+                    receta = f"### 🍲 Salteado Proteico\n**Instrucciones:** Cocina tu {fuente_proteina[0].lower()} a la plancha. Sirve con una guarnición de {veggies} al vapor y {carbos}."
+                
+                # Integración del Hack Digestivo
+                receta += "\n---\n"
+                receta += "💡 **Estrategia de Asimilación:** Para asegurar que tu cuerpo absorba hasta el último gramo de esta proteína sin generar inflamación abdominal, incluye una porción de **papaya fresca**. Triturar algunas de sus semillas junto con la fruta aportará una carga altísima de enzimas digestivas, manteniendo tu microbiota sana y lista para soportar el estrés de las sesiones de HIIT."
+                
+                st.success("¡Menú estructurado con éxito!")
+                st.markdown("<div style='background-color:#111811; padding:20px; border-radius:10px; border:1px solid #27ae60;'>", unsafe_allow_html=True)
+                st.markdown(receta)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────
+#  ══ CONSTRUCTOR DE RUTINAS (SESSION BUILDER) ══
+# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+#  ══ CONSTRUCTOR DE RUTINAS (SESSION BUILDER) ══
+# ─────────────────────────────────────────────
+elif seccion == "🛠️ Constructor de Rutinas":
+    import plotly.graph_objects as go
+    
+    st.markdown("# 🛠️ Constructor Dinámico")
+    st.markdown("<div style='color:#4d6b4d;font-family:Space Mono;font-size:12px;margin-bottom:20px'>INTELIGENCIA BIOMECÁNICA · SELECCIÓN POR PATRONES</div>", unsafe_allow_html=True)
+
+    # 1. BASE DE DATOS ESTRUCTURADA
+    ejercicios_db = {
+        "Empuje (Pecho/Hombros)": ["Press de Banca", "Press Inclinado Mancuernas", "Press Militar", "Flexiones (Push-ups)", "Fondos en paralelas", "Extensión de Tríceps"],
+        "Tirón (Espalda/Bíceps)": ["Dominadas", "Remo con barra", "Remo en polea baja", "Face Pull", "Curl de Bíceps", "Pull-over"],
+        "Dominante Rodilla (Cuádriceps)": ["Sentadilla Búlgara", "Prensa de piernas", "Sentadilla Frontal", "Zancadas", "Extensión de Cuádriceps", "Sentadilla Goblet"],
+        "Dominante Cadera (Isquios/Glúteo)": ["Peso Muerto Rumano", "Hip Thrust", "Curl Nórdico", "Kettlebell Swing", "Curl de Isquios en máquina"],
+        "Core y Estabilidad": ["Paseo del Granjero", "Plancha Abdominal", "Press Pallof", "Rueda Abdominal", "Rotación en Polea", "Woodchoppers"],
+        "Pliometría y RSA": ["Saltos al Cajón", "Saltos Laterales", "Sprints en Cinta", "Empuje de Trineo", "Lanzamiento Balón Medicinal"]
+    }
+
+    st.subheader("1. Diseña tu rutina por zonas")
+    st.markdown("Abre las categorías y selecciona tus ejercicios de hoy:")
+
+    seleccionados = []
+
+    # 2. INTERFAZ DE COLUMNAS DIVIDIDAS (Mejor UX en PC y Móvil)
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        with st.expander("🔵 Empuje (Pecho/Hombros/Tríceps)", expanded=True):
+            sel_empuje = st.multiselect("Ejercicios:", ejercicios_db["Empuje (Pecho/Hombros)"], key="emp", label_visibility="collapsed")
+            seleccionados.extend([(e, "Empuje (Pecho/Hombros)") for e in sel_empuje])
+            
+        with st.expander("🔴 Dominante Rodilla (Cuádriceps)", expanded=True):
+            sel_rodilla = st.multiselect("Ejercicios:", ejercicios_db["Dominante Rodilla (Cuádriceps)"], key="rod", label_visibility="collapsed")
+            seleccionados.extend([(e, "Dominante Rodilla (Cuádriceps)") for e in sel_rodilla])
+            
+        with st.expander("🛡️ Core y Estabilidad"):
+            sel_core = st.multiselect("Ejercicios:", ejercicios_db["Core y Estabilidad"], key="cor", label_visibility="collapsed")
+            seleccionados.extend([(e, "Core y Estabilidad") for e in sel_core])
+
+    with col_b:
+        with st.expander("🟢 Tirón (Espalda/Bíceps)", expanded=True):
+            sel_tiron = st.multiselect("Ejercicios:", ejercicios_db["Tirón (Espalda/Bíceps)"], key="tir", label_visibility="collapsed")
+            seleccionados.extend([(e, "Tirón (Espalda/Bíceps)") for e in sel_tiron])
+            
+        with st.expander("🟠 Dominante Cadera (Isquios/Glúteo)", expanded=True):
+            sel_cadera = st.multiselect("Ejercicios:", ejercicios_db["Dominante Cadera (Isquios/Glúteo)"], key="cad", label_visibility="collapsed")
+            seleccionados.extend([(e, "Dominante Cadera (Isquios/Glúteo)") for e in sel_cadera])
+            
+        with st.expander("⚡ Pliometría y Cardio"):
+            sel_plio = st.multiselect("Ejercicios:", ejercicios_db["Pliometría y RSA"], key="pli", label_visibility="collapsed")
+            seleccionados.extend([(e, "Pliometría y RSA") for e in sel_plio])
+
+    # 3. MOTOR DE ANÁLISIS Y GRAFICACIÓN RADAR
+    if seleccionados:
+        st.markdown("---")
+        st.subheader("2. Análisis de Carga Biomecánica")
+        
+        # Lógica de conteo optimizada
+        conteo = {cat: 0 for cat in ejercicios_db.keys()}
+        for ej, cat in seleccionados:
+            conteo[cat] += 1
+
+        categorias = list(conteo.keys())
+        valores = list(conteo.values())
+
+        # Configuración del Gráfico de Radar (Polar)
+        categorias_radar = categorias + [categorias[0]] # Cerrar el polígono
+        valores_radar = valores + [valores[0]]
+
+        fig = go.Figure(data=go.Scatterpolar(
+            r=valores_radar,
+            theta=[c.split(" ")[0] for c in categorias_radar], # Nombres cortos en el gráfico
+            fill='toself',
+            line_color='#e74c3c',
+            fillcolor='rgba(231, 76, 60, 0.4)',
+            marker=dict(size=8)
+        ))
+
+        fig.update_layout(
+            polar=dict(
+                radialaxis=dict(visible=True, range=[0, max(valores) + 1 if max(valores) > 0 else 4], tickfont=dict(color="#888")),
+                angularaxis=dict(tickfont=dict(size=12, color="#e8f5e8"))
+            ),
+            showlegend=False,
+            template="plotly_dark",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=50, r=50, t=20, b=20)
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+
+        # 4. SISTEMA DE ALERTAS INTELIGENTES
+        volumen_total = len(seleccionados)
+        max_cat_valor = max(valores)
+        
+        col_res1, col_res2 = st.columns(2)
+        with col_res1:
+            st.metric("Volumen Total", f"{volumen_total} ejercicios")
+        with col_res2:
+            st.metric("Patrón Dominante", categorias[valores.index(max_cat_valor)].split(" ")[0])
+
+        if max_cat_valor >= 4:
+            st.error("⚠️ Alerta de Sobrecarga: Tienes demasiados ejercicios del mismo grupo muscular. Balancea la rutina.")
+        elif valores[2] > 0 and valores[3] == 0:
+            st.warning("⚠️ Descompensación: Has incluido trabajo de Cuádriceps pero nada de Isquios/Glúteo. ¡Agrega un Peso Muerto para proteger tu rodilla!")
+        elif volumen_total > 8:
+            st.warning("⚠️ Alto Volumen: Más de 8 ejercicios puede generar demasiada fatiga central para una sola sesión.")
+        else:
+            st.success("✅ Sesión biomecánicamente balanceada. ¡Guarda tu celular y a levantar!")
